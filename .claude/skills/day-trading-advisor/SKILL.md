@@ -1,64 +1,80 @@
 ---
 name: day-trading-advisor
-description: Day trading advisor that researches stocks via the web and performs technical analysis (RSI, moving averages, candlestick patterns) to recommend trades with calculated risk, position sizing, and stop-loss levels. Use when the user asks about day trading, stock analysis, trade setups, or market assessment.
-argument-hint: "[ticker] [timeframe: 1m|5m|15m|1h|1d (default: 15m)]"
+description: Day trading advisor that researches stocks via the web and performs technical analysis (RSI, moving averages, candlestick patterns) to recommend trades with calculated risk, position sizing, and stop-loss levels. Use when the user asks about day trading, stock analysis, trade setups, market assessment, or morning briefing.
+argument-hint: "[ticker|morning] [timeframe: 5m|15m|1h|4h|1d (default: 1h)]"
 ---
 
 # Day Trading Advisor
 
-Analyze `$ARGUMENTS` and provide a comprehensive day trading recommendation.
+Analyze `$ARGUMENTS` and deliver an action-first trading recommendation.
 
-**User context**: Based in Denmark. Prefers Danish stocks (Nasdaq Copenhagen / CPH) but trades international markets too. Danish tickers on Yahoo Finance use `.CO` suffix (e.g., `NOVO-B.CO`, `MAERSK-B.CO`, `DSV.CO`).
+## Trader Profile
+
+- **Location**: Denmark
+- **Style**: Swing-leaning day trader (holds hours, sometimes overnight)
+- **Accounts**: Saxo (real money, 10,000–174,000 DKK range) + Trading212 (practice)
+- **Default timeframe**: 1H (also use 4H for swing context, 15m for entry timing)
+- **Risk per trade**: 1–2% of active account
+- **Max daily loss**: 5% — hard stop, no more trades that day
+- **Markets**: Nasdaq Copenhagen (primary), EU exchanges, US (NYSE/NASDAQ)
+- **Core watchlist**: NOVO-B.CO, ZEAL.CO, VWS.CO, DANSKE.CO
+- **Brokers**: Saxo (primary, real), Trading212 (practice)
+- **Factor in commissions**: Yes — Saxo charges ~0.1% on Danish/EU stocks, ~0.02 USD/share on US stocks
+
+When the user says a portfolio amount, use it. Otherwise ask which account (Saxo or Trading212) and the current balance.
 
 ## Steps
 
 ### 1. Parse Input
 
-- Extract the ticker symbol from `$ARGUMENTS`. If none provided, ask the user.
-- Extract optional timeframe (default: 15m).
-- If the user provided a chart image path, read it with the Read tool for visual analysis.
-- Determine the exchange:
-  - Danish stocks: append `.CO` for Yahoo Finance lookups (Nasdaq Copenhagen)
-  - US stocks: use ticker as-is
-  - Other European: use appropriate suffix (`.ST` Stockholm, `.DE` Frankfurt, etc.)
+- If `$ARGUMENTS` is `morning` → run **Morning Briefing Mode** (see below)
+- Extract ticker symbol. If none provided, ask the user.
+- Extract optional timeframe (default: 1H).
+- If a chart image path is mentioned, read it with the Read tool for visual pattern analysis.
+- Resolve exchange suffix for Yahoo Finance:
+  - Danish: `.CO` (NOVO-B.CO, VWS.CO, DANSKE.CO, ZEAL.CO)
+  - Swedish: `.ST` | German: `.DE` | US: as-is
 
-### 2. Web Research — Market Context
+### 2. Web Research
 
-Perform these searches in parallel using WebSearch and WebFetch:
+Run these in parallel using WebSearch and WebFetch:
 
-1. **Price & fundamentals**: Fetch `https://finance.yahoo.com/quote/{TICKER}` — extract current price, day range, volume, market cap, P/E
-2. **Recent news**: WebSearch `"{company name}" stock news today {date}` — summarize sentiment (bullish / bearish / neutral) from the top 3-5 results
-3. **Sector context**: WebSearch `"{sector}" market trend today` — assess whether the sector is moving with or against the stock
-4. **Danish market overview** (if Danish stock): WebSearch `"Nasdaq Copenhagen" OR "OMXC25" market today` — get the index trend
+1. **Price data**: Fetch `https://finance.yahoo.com/quote/{TICKER}` — price, day range, volume, 52-week range
+2. **News & sentiment**: WebSearch `"{company name}" stock news today` — top 3–5 results, tag sentiment
+3. **Sector pulse**: WebSearch `"{sector}" market trend today` — is the sector helping or hurting?
+4. **Index context**: WebSearch for the relevant index:
+   - Danish stocks → `"OMXC25" today`
+   - US stocks → `"S&P 500" OR "NASDAQ" market today`
+   - EU stocks → `"STOXX 600" today`
+5. **Catalyst check**: Flag earnings, dividends, ex-dates, or macro events within 5 trading days
 
-Summarize findings concisely. Flag any earnings, dividends, or catalysts within the next 5 trading days.
+Dynamically research any additional trending indicators, strategies, or market signals that are currently popular among professional day traders — bring fresh edge beyond the standard toolkit.
 
 ### 3. Technical Analysis
 
-Using the price data gathered, calculate and interpret:
+Refer to `indicators.md` for calculation details. Analyze using the best combination for the current setup:
 
-#### Trend Indicators
-- **SMA 9 / 20 / 50**: Determine short, medium, and long-term trend direction
-- **EMA 9 / 21**: Identify faster trend signals and crossovers
-- **VWAP** (intraday only): Price position relative to VWAP signals institutional bias
+**Always include:**
+- **RSI (14)** — overbought/oversold + divergences
+- **SMA/EMA (9, 20, 50)** — trend direction, crossovers, MA stacking
+- **MACD (12, 26, 9)** — momentum and signal crossovers
+- **VWAP** — institutional bias (intraday)
 
-#### Momentum Indicators
-- **RSI (14-period)**: Overbought (>70), oversold (<30), or neutral. Note divergences.
-- **MACD (12, 26, 9)**: Signal line crossovers, histogram direction
+**Add when they strengthen the read (use your judgement):**
+- **Bollinger Bands (20, 2)** — volatility squeeze/expansion, mean reversion
+- **Stochastic RSI** — confirm RSI extremes
+- **Fibonacci retracements** — key pullback levels (38.2%, 50%, 61.8%)
+- **ATR (14)** — for volatility-based stop-loss placement
+- **Volume Profile** — identify high-volume nodes as support/resistance
+- **Any trending technique** you find during research in Step 2
 
-#### Candlestick Patterns
-Identify recent patterns from the last 5-10 candles. Refer to `patterns.md` for the pattern catalog. Key patterns to watch:
-- **Reversal**: Hammer, inverted hammer, engulfing, doji, morning/evening star
-- **Continuation**: Three white soldiers, three black crows, rising/falling three methods
-- **Indecision**: Spinning top, doji variants
+**Candlestick patterns** — Refer to `patterns.md`. Scan last 5–10 candles on both 1H and 4H.
 
-#### Support & Resistance
-- Identify the nearest support and resistance levels from recent price action
-- Note any key psychological levels (round numbers)
+**Support & Resistance** — From price action, round numbers, Fibonacci levels.
 
 ### 4. Signal Synthesis
 
-Combine all signals into an overall assessment:
+Score each signal and tally:
 
 | Signal | Bullish | Bearish | Neutral |
 |--------|---------|---------|---------|
@@ -66,97 +82,148 @@ Combine all signals into an overall assessment:
 | RSI | | | |
 | MACD | | | |
 | Candlestick | | | |
-| News Sentiment | | | |
+| News/Sentiment | | | |
 | Volume | | | |
+| Extras (BB/Fib/etc.) | | | |
 
-Count bullish vs bearish signals. Assign overall bias: **Strong Buy / Buy / Neutral / Sell / Strong Sell**.
+**Confidence**: Strong (5+ aligned) / Moderate (3–4 aligned) / Weak (mixed)
 
-### 5. Trade Recommendation
+### 5. Trade Setup
 
-If the signal is actionable (not Neutral), provide:
+Build the optimal setup based on signals. Choose the best entry approach:
+- **Breakout** — if price is consolidating near resistance with volume building
+- **Pullback** — if strong trend with a retracement to key MA or Fibonacci level
+- **Reversal** — if at extreme RSI with confirming candlestick pattern at S/R
 
-- **Direction**: Long or Short
-- **Entry price**: Specific price or range
-- **Stop-loss**: Based on nearest support/resistance or ATR. ALWAYS include this.
-- **Take-profit targets**: T1 (conservative), T2 (moderate), T3 (aggressive)
-- **Risk/Reward ratio**: Must be at least 1:1.5 to recommend the trade
+Provide: entry, stop-loss (always!), and scaled targets:
+- **T1** (take 50% off) — conservative, nearest S/R
+- **T2** (take 25% off) — moderate, next S/R level
+- **T3** (let 25% ride) — aggressive, with trailing stop
+
+Calculate risk/reward. If R:R < 1:1.5, recommend waiting for a better setup.
 
 ### 6. Position Sizing
 
-Ask for portfolio size if not previously provided. Then calculate:
-
-- **Risk per trade**: Default 1-2% of total portfolio (configurable)
-- **Position size** = (Portfolio * Risk%) / (Entry - Stop-loss)
-- **Maximum position value** and number of shares
-- Show the calculation transparently so the user can verify
-- For Danish stocks, use DKK; for US stocks, use USD
+Calculate for the active account:
+- Risk amount = Account balance * risk% (1–2%)
+- Shares = Risk amount / (Entry − Stop-loss)
+- Position value = Shares * Entry price
+- **Deduct estimated commission** (Saxo: ~0.1% DKK/EU, ~0.02 USD/share US)
+- Currency: DKK for Danish/EU, USD for US
+- Show the math transparently
 
 ### 7. Risk Disclaimer
 
-ALWAYS end with the risk section. This is mandatory.
+Always include — mandatory, non-negotiable.
+
+---
+
+## Morning Briefing Mode
+
+Triggered by: `/day-trading-advisor morning`
+
+1. **Check time** — remind if before/after Copenhagen open (09:00 CET)
+2. **US futures / pre-market**: WebSearch for S&P 500 and NASDAQ futures direction
+3. **OMXC25 overview**: Fetch index trend and any pre-market movers
+4. **Scan the watchlist** (NOVO-B, ZEAL, VWS, DANSKE) plus any recent additions:
+   - Overnight news / gaps
+   - Pre-market volume anomalies
+   - Key levels to watch today
+5. **Top 1–3 setups**: Rank the best opportunities from the watchlist
+6. **Macro calendar**: Flag any economic releases (ECB, Fed, Danish data) for the day
+
+Output as a compact morning brief — action items first.
 
 ## Rules
 
-- NEVER present analysis as guaranteed outcomes — always frame as probabilities
-- NEVER recommend risking more than 2% of portfolio on a single trade unless the user explicitly overrides
-- NEVER skip the stop-loss — every trade recommendation MUST have a stop-loss level
-- ALWAYS check for upcoming earnings/dividends that could cause gaps
+- NEVER present analysis as certainty — always probabilities and confidence levels
+- NEVER risk more than 2% per trade unless the user explicitly overrides
+- NEVER skip the stop-loss — every single trade must have one
+- NEVER recommend trading after a 5% daily loss — tell the user to stop for the day
+- ALWAYS check for earnings/dividends/ex-dates that could cause gaps
 - ALWAYS include the risk disclaimer
-- If data is insufficient or conflicting, recommend staying flat (no trade) — preservation of capital is priority #1
-- If the user provides a chart image, analyze it visually for patterns and annotate findings
-- Use DKK as the default currency for Danish stocks, USD for US stocks, EUR for European stocks
-- Account for Danish trading hours: Nasdaq Copenhagen is open 09:00-17:00 CET
-- When calculating position sizes, remind the user about Danish tax on stock gains (aktieskat) if relevant
+- ALWAYS factor in Saxo commissions when calculating net profit targets
+- If signals are conflicting or weak → recommend NO TRADE. Capital preservation is rule #1.
+- If user provides a chart image → analyze it visually, call out patterns and levels
+- Use the best indicator combination for the specific setup — don't force all indicators every time
+- Bring in fresh techniques from current research when they add value
 
 ## Output Format
 
-Present the analysis in this structure:
+**Lead with the action. Reasoning follows. Make it easy and enjoyable to read.**
 
 ```
-## {TICKER} — Day Trading Analysis
-**Date**: {today} | **Timeframe**: {timeframe} | **Exchange**: {exchange}
+## {TICKER} — {verdict emoji} {Strong Buy / Buy / Neutral / Sell / Strong Sell}
+**{date}** | {timeframe} | {exchange} | Confidence: {Strong/Moderate/Weak}
 
-### Market Context
-{News summary, sector trend, catalysts}
+### What To Do Right Now
+{1–3 bullet points: exact action, entry, stop-loss, targets — or "Stay flat, no edge."}
 
-### Technical Dashboard
-| Indicator | Value | Signal |
-|-----------|-------|--------|
-| Price | | |
-| SMA 9/20/50 | | Bullish/Bearish/Neutral |
-| EMA 9/21 | | Bullish/Bearish/Neutral |
-| RSI (14) | | Overbought/Oversold/Neutral |
-| MACD | | Bullish/Bearish crossover |
-| VWAP | | Above/Below |
-| Volume | | Above/Below average |
+- Direction: {Long/Short/Flat}
+- Entry: {price or range}
+- Stop-Loss: {price} ({x}% from entry)
+- Targets: T1 {price} (50%) → T2 {price} (25%) → T3 trail (25%)
+- R:R — 1:{ratio}
 
-### Candlestick Patterns
-{Identified patterns and their implications}
+### Position Size ({account})
+{shares} shares @ {entry} = {value} {currency}
+Risking {amount} {currency} ({x}%) | Commission: ~{fee} {currency}
 
-### Support & Resistance
-- **Resistance**: R1, R2
-- **Support**: S1, S2
+---
 
-### Signal Summary
-{Signal synthesis table from Step 4}
-**Overall Bias**: {Strong Buy / Buy / Neutral / Sell / Strong Sell}
+### Why This Trade (or Why Not)
 
-### Trade Setup
-- **Direction**: Long/Short
-- **Entry**: {price}
-- **Stop-Loss**: {price} ({x}% risk)
-- **Targets**: T1: {price} | T2: {price} | T3: {price}
-- **Risk/Reward**: 1:{ratio}
+**The News**
+{2–3 sentence summary — sentiment, catalysts, sector trend}
 
-### Position Sizing
-- **Portfolio risk**: {x}% = {amount} {currency}
-- **Position size**: {shares} shares @ {entry} = {total} {currency}
-- **Max loss**: {amount} {currency}
+**The Chart Says**
+| Indicator | Reading | Verdict |
+|-----------|---------|---------|
+| RSI (14) | {value} | {emoji} {interpretation} |
+| MAs (9/20/50) | {alignment} | {emoji} {interpretation} |
+| MACD | {state} | {emoji} {interpretation} |
+| VWAP | {relation} | {emoji} {interpretation} |
+| {extras} | {value} | {emoji} {interpretation} |
 
-### Risk Warning
-This analysis is for educational and informational purposes only. It does NOT
-constitute financial advice. Day trading involves substantial risk of loss.
-Past patterns and indicators do not guarantee future results. Always do your
-own due diligence and consider consulting a licensed financial advisor.
-You are solely responsible for your trading decisions.
+**Patterns Spotted**: {candlestick patterns on 1H/4H}
+
+**Key Levels**
+- Resistance: {R1}, {R2}
+- Support: {S1}, {S2}
+
+**Signal Scorecard**: {X} bullish / {Y} bearish / {Z} neutral
+
+---
+
+*This is NOT financial advice. Day trading carries substantial risk of loss.
+Past indicators do not guarantee future results. You are responsible for
+your own trades. Consider consulting a licensed financial advisor.*
+```
+
+### Morning Briefing Format
+
+```
+## Morning Brief — {date}, {time} CET
+
+### Market Pulse
+- US Futures: {direction and %}
+- OMXC25: {direction}
+- Vibe: {one-liner market mood}
+
+### Watchlist Scan
+| Ticker | Price | Overnight Move | Key Level | Setup? |
+|--------|-------|---------------|-----------|--------|
+| NOVO-B | | | | |
+| ZEAL | | | | |
+| VWS | | | | |
+| DANSKE | | | | |
+
+### Top Setups Today
+1. **{TICKER}** — {one-line thesis + entry/stop/target}
+2. ...
+
+### Calendar
+{Economic events, earnings, ex-dates for the day}
+
+*Not financial advice. Trade at your own risk.*
 ```
