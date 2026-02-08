@@ -13,6 +13,15 @@ Interview-driven skill creator. Asks structured questions to gather all requirem
 /create-skill my-skill-name
 ```
 
+### /day-trading-advisor
+Generates a comprehensive day trading buying report for any stock ticker. Researches current price, financials, catalysts, technicals, and analyst sentiment, then produces a structured report.
+
+**Usage:**
+```
+/day-trading-advisor NOVO B
+/day-trading-advisor AAPL
+```
+
 ## Project Structure
 
 ```
@@ -22,6 +31,9 @@ Interview-driven skill creator. Asks structured questions to gather all requirem
     template.md           — Template structure for generated skills
     examples/
       sample-generated-skill.md — Example of a skill produced by /create-skill
+  day-trading-advisor/
+    SKILL.md              — Skill instructions for generating trading reports
+    reports/              — Generated buying reports (TICKER-YYYY-MM-DD.md)
 ```
 
 ## Conventions
